@@ -15,6 +15,7 @@ export interface Company {
   ipo_date?: string;
   headquarters?: string;
   market_cap?: string;
+  financial_as_of?: string;
 }
 
 export interface SyncLog {
