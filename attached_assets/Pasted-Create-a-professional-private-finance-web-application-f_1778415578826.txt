@@ -1,0 +1,444 @@
+Create a professional private finance web application for Thai stock market company research using SET Market API.﻿
+
+Main Goal:﻿
+Build a modern PRIVATE web platform for personal use only that collects company information from SET Market API and stores it permanently in Firebase.﻿
+
+This is NOT a real-time trading platform.﻿
+
+The website is intended for company/industry research and long-term stored financial information.﻿
+
+Data will only be refreshed manually every 3–5 months.﻿
+
+The system must load data from Firebase Firestore only for speed, performance, and reliability.﻿
+
+No public access.﻿
+
+==================================================﻿
+TECH STACK﻿
+==================================================﻿
+
+Frontend:﻿
+- React + TypeScript﻿
+- TailwindCSS﻿
+- TanStack Table﻿
+- React Query﻿
+- Firebase SDK﻿
+- Fuse.js for smart search﻿
+
+Backend:﻿
+- Firebase Cloud Functions OR local admin sync script﻿
+- Firebase Admin SDK﻿
+
+Database:﻿
+- Firebase Firestore﻿
+
+Hosting:﻿
+- Firebase Hosting﻿
+
+Architecture:﻿
+- Database-first architecture﻿
+- Cached/stored data﻿
+- No real-time dependency﻿
+- Production-ready scalable structure﻿
+- Firebase-only deployment﻿
+
+==================================================﻿
+AUTHENTICATION & ACCESS CONTROL﻿
+==================================================﻿
+
+This website is PRIVATE and intended for personal use only.﻿
+
+Requirements:﻿
+- Entire website requires login﻿
+- No public access﻿
+- Redirect unauthenticated users to login page﻿
+- Protect all routes/pages﻿
+- Only authenticated user can access website﻿
+
+Authentication:﻿
+Use Firebase Authentication.﻿
+
+Preferred method:﻿
+- Email + Password﻿
+
+Requirements:﻿
+- NO registration/signup page﻿
+- Only one pre-created admin account can login﻿
+- Session persistence (stay logged in)﻿
+- Logout button﻿
+- Protected routes﻿
+- Redirect unauthorized users to login page﻿
+- Auto redirect after successful login﻿
+
+Security Requirements:﻿
+- Firestore must deny all public access﻿
+- Only authenticated users can read/write﻿
+- Sync system restricted to admin﻿
+- Admin-only access for data import﻿
+
+Provide proper Firebase Security Rules.﻿
+
+Pages:﻿
+
+1. Login Page﻿
+- Clean modern UI﻿
+- Email input﻿
+- Password input﻿
+- Login button﻿
+- Error handling﻿
+
+2. Dashboard (Protected)﻿
+- Company finance table﻿
+- Search/filter system﻿
+- Statistics cards﻿
+- Company details modal/page﻿
+
+3. Admin Panel (Protected)﻿
+- Sync Data button﻿
+- Sync logs﻿
+- Last sync date﻿
+- Import progress﻿
+- Import history﻿
+
+==================================================﻿
+MARKETS﻿
+==================================================﻿
+
+Support:﻿
+- SET﻿
+- mai﻿
+
+==================================================﻿
+CORE REQUIREMENT﻿
+==================================================﻿
+
+Pull company and market information from SET Market API and permanently store all company data in Firestore.﻿
+
+The frontend MUST always read from Firestore.﻿
+
+The frontend MUST NEVER directly call SET API.﻿
+
+All API calls happen only during manual sync/import.﻿
+
+==================================================﻿
+FIRESTORE DATABASE STRUCTURE﻿
+==================================================﻿
+
+Create collection:﻿
+
+companies﻿
+
+Each document represents one company.﻿
+
+Required Fields:﻿
+
+- market (SET / mai)﻿
+- industry﻿
+- sector﻿
+- symbol﻿
+- symbol_name﻿
+- description﻿
+- report_download_link﻿
+- company_website﻿
+- updated_at﻿
+- imported_at﻿
+
+Optional Fields:﻿
+- logo﻿
+- isin_code﻿
+- ipo_date﻿
+- headquarters﻿
+- market_cap﻿
+
+==================================================﻿
+DESCRIPTION REQUIREMENT﻿
+==================================================﻿
+
+Description is VERY IMPORTANT.﻿
+
+The description field MUST explain:﻿
+
+- What the company does﻿
+- Company's business activities﻿
+- What the company stands for﻿
+- Business model﻿
+- Main products/services﻿
+
+Examples:﻿
+
+PTT:﻿
+Energy and petroleum business including exploration, production, refining, logistics, and retail operations.﻿
+
+CPALL:﻿
+Retail convenience store operator under the 7-Eleven brand in Thailand, providing consumer goods and services.﻿
+
+AOT:﻿
+Airport operator responsible for aviation infrastructure and airport management in Thailand.﻿
+
+Descriptions may be VERY LONG.﻿
+
+Support long descriptions.﻿
+
+==================================================﻿
+DESCRIPTION SOURCE PRIORITY﻿
+==================================================﻿
+
+Description MUST be automatically pulled.﻿
+
+Priority order:﻿
+
+1. Pull from SET API if available﻿
+2. Use company profile endpoint﻿
+3. Use listed company/company overview endpoint﻿
+4. Use business/company information endpoint﻿
+5. Never use placeholder text﻿
+
+Avoid web scraping unless absolutely necessary.﻿
+
+==================================================﻿
+DATA SYNC / IMPORT SYSTEM﻿
+==================================================﻿
+
+Since data updates only every 3–5 months:﻿
+
+Create MANUAL sync system.﻿
+
+Admin Features:﻿
+- Sync Data button﻿
+- Pull latest data from SET API﻿
+- Save into Firestore﻿
+- Upsert existing records﻿
+- Prevent duplicate symbols﻿
+- Show sync progress﻿
+- Show imported count﻿
+- Show updated count﻿
+- Show failed imports﻿
+- Show last sync timestamp﻿
+- Save logs﻿
+
+Sync Logic:﻿
+IF symbol exists:﻿
+→ update document﻿
+
+IF symbol does not exist:﻿
+→ create document﻿
+
+Requirements:﻿
+- Never duplicate symbols﻿
+- Retry failed requests﻿
+- Normalize API responses﻿
+- Handle missing data safely﻿
+- Log errors﻿
+- Continue sync if one company fails﻿
+
+==================================================﻿
+SYNC LOGS﻿
+==================================================﻿
+
+Create collection:﻿
+
+sync_logs﻿
+
+Fields:﻿
+- started_at﻿
+- finished_at﻿
+- total_imported﻿
+- total_updated﻿
+- success﻿
+- failed_symbols﻿
+- error_logs﻿
+
+==================================================﻿
+FINANCE COMPANY TABLE﻿
+==================================================﻿
+
+Display Columns:﻿
+- Market﻿
+- Industry﻿
+- Sector﻿
+- Symbol﻿
+- Symbol Name﻿
+- Description﻿
+- Report Download Link﻿
+
+Requirements:﻿
+- Professional financial dashboard table﻿
+- Sticky header﻿
+- Responsive design﻿
+- Sortable columns﻿
+- Pagination﻿
+- Column visibility toggle﻿
+- Fast rendering﻿
+- Loading state﻿
+- Skeleton loading﻿
+
+==================================================﻿
+SEARCH SYSTEM﻿
+==================================================﻿
+
+Implement smart search using Fuse.js.﻿
+
+Search across:﻿
+- symbol﻿
+- symbol_name﻿
+- market﻿
+- sector﻿
+- industry﻿
+- description﻿
+
+Search Features:﻿
+- Search by symbol﻿
+- Search by symbol name﻿
+- Search by market﻿
+- Search by sector﻿
+- Search by industry﻿
+- Search inside long descriptions﻿
+
+Filtering:﻿
+- Filter by market (SET / mai)﻿
+- Filter by industry﻿
+- Filter by sector﻿
+
+==================================================﻿
+DESCRIPTION UI﻿
+==================================================﻿
+
+Descriptions may be VERY LONG.﻿
+
+DO NOT show full description in table.﻿
+
+Instead:﻿
+- Show shortened preview﻿
+- Use ellipsis (...)﻿
+- Add "Read More" button﻿
+
+Clicking row or button opens:﻿
+
+Company Details Modal/Page﻿
+
+==================================================﻿
+COMPANY DETAILS PAGE / MODAL﻿
+==================================================﻿
+
+Show:﻿
+
+- Symbol﻿
+- Company Name﻿
+- Market﻿
+- Industry﻿
+- Sector﻿
+- Full Description﻿
+- Company Website﻿
+- Report Download Link﻿
+- Updated Date﻿
+- Imported Date﻿
+
+Requirements:﻿
+- Clean UI﻿
+- Easy to read﻿
+- Mobile responsive﻿
+
+==================================================﻿
+REPORT SYSTEM﻿
+==================================================﻿
+
+Requirements:﻿
+- Open report in new tab﻿
+- Download/open report button﻿
+- Store report link in database﻿
+- Accessible from table and details page﻿
+
+==================================================﻿
+DASHBOARD STATISTICS﻿
+==================================================﻿
+
+Top Cards:﻿
+
+- Total Companies﻿
+- Total Industries﻿
+- Total Sectors﻿
+- SET Count﻿
+- mai Count﻿
+- Last Sync Date﻿
+
+==================================================﻿
+PERFORMANCE REQUIREMENTS﻿
+==================================================﻿
+
+Requirements:﻿
+- Firestore only reads﻿
+- No direct API calls in frontend﻿
+- Efficient long-text handling﻿
+- Fast loading﻿
+- Optimized queries﻿
+- Proper indexing﻿
+- Cached search performance﻿
+- Mobile optimization﻿
+
+==================================================﻿
+UI/UX DESIGN﻿
+==================================================﻿
+
+Style inspiration:﻿
+- Bloomberg Terminal﻿
+- TradingView﻿
+- SET Market website﻿
+
+Requirements:﻿
+- Professional finance dashboard﻿
+- Clean modern UI﻿
+- Dark mode﻿
+- Light mode﻿
+- Mobile responsive﻿
+- Smooth loading states﻿
+- Skeleton UI﻿
+- Error handling﻿
+- Minimal but premium feel﻿
+
+==================================================﻿
+EXPORT FEATURES﻿
+==================================================﻿
+
+Allow exporting filtered results:﻿
+
+- CSV﻿
+- Excel﻿
+
+==================================================﻿
+CODE REQUIREMENTS﻿
+==================================================﻿
+
+Requirements:﻿
+- Production-ready architecture﻿
+- Strong TypeScript typing﻿
+- Reusable components﻿
+- Proper folder structure﻿
+- Error handling﻿
+- Loading states﻿
+- No mock data﻿
+- Clean maintainable code﻿
+- Secure Firebase implementation﻿
+- Firebase Security Rules included﻿
+
+==================================================﻿
+EXPECTED OUTPUT﻿
+==================================================﻿
+
+Provide:﻿
+
+- Complete working project﻿
+- Full file structure﻿
+- Firebase configuration﻿
+- Firestore schema﻿
+- Firebase Auth setup﻿
+- Firebase Security Rules﻿
+- Sync system﻿
+- API integration﻿
+- Full frontend﻿
+- Admin panel﻿
+- Login system﻿
+- Environment variables example﻿
+- Setup guide﻿
+- Firebase Hosting deployment guide﻿
+- Ready-to-run production code﻿
+- No placeholder implementation

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SET Market Research"
+version = "1.0.0"
+id = "artifacts/set-research"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19242
+
+[services.development]
+run = "pnpm --filter @workspace/set-research run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/set-research", "run", "build" ]
+publicDir = "artifacts/set-research/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19242"
+BASE_PATH = "/"
