@@ -18,31 +18,22 @@ export function Layout({ children }: { children: ReactNode }) {
   const { theme, setTheme } = useTheme();
   const [location] = useLocation();
 
+  const navClass = (path: string) =>
+    `flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+      location === path
+        ? 'bg-primary text-primary-foreground font-medium'
+        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+    }`;
+
   const NavLinks = () => (
     <>
-      <Link href="/dashboard">
-        <a 
-          className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-            location === '/dashboard' 
-              ? 'bg-primary text-primary-foreground font-medium' 
-              : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-          }`}
-        >
-          <BarChart3 className="h-4 w-4" />
-          Dashboard
-        </a>
+      <Link href="/dashboard" className={navClass('/dashboard')}>
+        <BarChart3 className="h-4 w-4" />
+        Dashboard
       </Link>
-      <Link href="/admin">
-        <a 
-          className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-            location === '/admin' 
-              ? 'bg-primary text-primary-foreground font-medium' 
-              : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-          }`}
-        >
-          <Settings className="h-4 w-4" />
-          Admin
-        </a>
+      <Link href="/admin" className={navClass('/admin')}>
+        <Settings className="h-4 w-4" />
+        Admin
       </Link>
     </>
   );

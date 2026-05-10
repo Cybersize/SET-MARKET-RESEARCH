@@ -11,6 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   RefreshCw,
   AlertTriangle,
@@ -21,6 +23,8 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
+  Plug,
+  Terminal,
 } from 'lucide-react';
 
 function formatDate(d: string) {
@@ -100,6 +104,26 @@ export function AdminPage() {
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState<SyncProgress>(IDLE_PROGRESS);
   const [lastResult, setLastResult] = useState<{ success: boolean; log: SyncLog } | null>(null);
+
+  const [testPath, setTestPath] = useState('/api/set-proxy/set/stock/list?lang=en');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ status: number; body: string } | null>(null);
+
+  const handleTestApi = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(testPath);
+      const text = await res.text();
+      let body = text;
+      try { body = JSON.stringify(JSON.parse(text), null, 2); } catch { /* keep raw */ }
+      setTestResult({ status: res.status, body: body.slice(0, 2000) });
+    } catch (err: any) {
+      setTestResult({ status: 0, body: `Network error: ${err.message}` });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const lastSync = logs[0];
 
@@ -242,6 +266,54 @@ export function AdminPage() {
               </div>
             ) : (
               logs.slice(0, 20).map(log => <SyncLogRow key={log.id} log={log} />)
+            )}
+          </CardContent>
+        </Card>
+
+        {/* API Connection Tester */}
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Plug className="h-4 w-4 text-primary" />
+              <CardTitle className="text-base">API Connection Tester</CardTitle>
+            </div>
+            <CardDescription>
+              Test any proxy endpoint path to confirm the SET API is reachable and find the correct URL structure.
+              The proxy injects your API key automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-mono text-muted-foreground">Proxy path to test</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={testPath}
+                  onChange={e => setTestPath(e.target.value)}
+                  className="font-mono text-xs bg-background border-border"
+                  placeholder="/api/set-proxy/set/stock/list?lang=en"
+                />
+                <Button onClick={handleTestApi} disabled={testing} size="sm" variant="outline" className="shrink-0 gap-1.5 font-mono">
+                  <Terminal className={`h-3.5 w-3.5 ${testing ? 'animate-pulse' : ''}`} />
+                  {testing ? 'Testing…' : 'Test'}
+                </Button>
+              </div>
+            </div>
+
+            {testResult && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`font-mono text-xs ${testResult.status >= 200 && testResult.status < 300 ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-destructive border-destructive/30 bg-destructive/10'}`}
+                  >
+                    HTTP {testResult.status || 'ERR'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground font-mono">{testPath}</span>
+                </div>
+                <pre className="text-xs font-mono text-muted-foreground bg-background rounded-lg p-3 border border-border overflow-x-auto max-h-64 leading-relaxed whitespace-pre-wrap">
+                  {testResult.body}
+                </pre>
+              </div>
             )}
           </CardContent>
         </Card>
