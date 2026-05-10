@@ -2,7 +2,9 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-const SET_API_BASE = "https://api.settrade.com/api";
+// SET Marketplace API — https://marketplace.set.or.th/api/public/
+// Auth: api-key passed as a request header (not query param)
+const SET_API_BASE = "https://marketplace.set.or.th/api/public";
 const API_KEY = process.env["SET_API_KEY"];
 
 router.get("/set-proxy/*splat", async (req, res) => {
@@ -16,26 +18,23 @@ router.get("/set-proxy/*splat", async (req, res) => {
   const splat = Array.isArray(raw) ? raw.join("/") : raw;
   const upstreamUrl = new URL(`${SET_API_BASE}/${splat}`);
 
-  // Forward original query params
+  // Forward original query params (no key in query — it goes in header)
   for (const [key, value] of Object.entries(req.query)) {
     upstreamUrl.searchParams.set(key, String(value));
   }
-
-  // Inject API key
-  upstreamUrl.searchParams.set("apiKey", API_KEY);
 
   try {
     const upstream = await fetch(upstreamUrl.toString(), {
       headers: {
         "Accept": "application/json",
-        "Content-Type": "application/json",
+        "api-key": API_KEY,          // SET Marketplace auth header
       },
     });
 
     const text = await upstream.text();
 
     res.status(upstream.status)
-      .set("Content-Type", "application/json")
+      .set("Content-Type", upstream.headers.get("content-type") ?? "application/json")
       .send(text);
   } catch (err) {
     req.log.error({ err }, "SET API proxy error");
