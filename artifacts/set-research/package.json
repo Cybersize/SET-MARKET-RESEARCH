@@ -46,6 +46,7 @@
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "catalog:",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
@@ -76,5 +77,8 @@
     "wouter": "catalog:",
     "xlsx": "^0.18.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "papaparse": "^5.5.3"
   }
 }

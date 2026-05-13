@@ -12,7 +12,6 @@ import {
 } from '@tanstack/react-table';
 import Fuse from 'fuse.js';
 import { useCompanies } from '@/hooks/useCompanies';
-import { useSyncLogs } from '@/hooks/useSyncLogs';
 import { Company } from '@/types';
 import { Layout } from '@/components/Layout';
 import { CompanyModal } from '@/components/CompanyModal';
@@ -25,7 +24,6 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Building2,
-  Factory,
   LayoutGrid,
   TrendingUp,
   Search,
@@ -36,19 +34,29 @@ import {
   ChevronsUpDown,
   ExternalLink,
   Eye,
-  Calendar,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
+// Fuse.js with Thai-friendly settings: ignoreLocation so it matches anywhere in
+// the string (critical for Thai since words aren't space-separated), and a
+// generous distance so a short query still matches long descriptions.
 const fuseOptions = {
-  keys: ['symbol', 'symbol_name', 'market', 'sector', 'industry', 'description'],
-  threshold: 0.3,
+  keys: [
+    { name: 'symbol', weight: 3 },
+    { name: 'symbol_name', weight: 2 },
+    { name: 'sector', weight: 1.5 },
+    { name: 'description', weight: 0.8 },
+  ],
+  threshold: 0.4,
   includeScore: true,
+  ignoreLocation: true,
+  distance: 2000,
+  minMatchCharLength: 1,
 };
 
 function StatCard({ label, value, icon: Icon, accent }: { label: string; value: string | number; icon: React.ElementType; accent?: boolean }) {
   return (
-    <Card className="border-border bg-card" data-testid={`stat-card-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+    <Card className="border-border bg-card">
       <CardContent className="p-4 flex items-center gap-4">
         <div className={`p-2.5 rounded-lg ${accent ? 'bg-accent/20' : 'bg-primary/10'}`}>
           <Icon className={`h-5 w-5 ${accent ? 'text-accent' : 'text-primary'}`} />
@@ -64,39 +72,28 @@ function StatCard({ label, value, icon: Icon, accent }: { label: string; value: 
 
 export function DashboardPage() {
   const { companies, loading } = useCompanies();
-  const { logs } = useSyncLogs();
   const [searchQuery, setSearchQuery] = useState('');
   const [marketFilter, setMarketFilter] = useState('all');
-  const [industryFilter, setIndustryFilter] = useState('all');
   const [sectorFilter, setSectorFilter] = useState('all');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   const stats = useMemo(() => {
-    const industries = new Set(companies.map(c => c.industry).filter(Boolean));
     const sectors = new Set(companies.map(c => c.sector).filter(Boolean));
     const setCount = companies.filter(c => c.market === 'SET').length;
     const maiCount = companies.filter(c => c.market === 'mai').length;
-    const lastSync = logs[0]?.started_at ? new Date(logs[0].started_at).toLocaleDateString() : 'Never';
-    return { total: companies.length, industries: industries.size, sectors: sectors.size, setCount, maiCount, lastSync };
-  }, [companies, logs]);
-
-  const uniqueIndustries = useMemo(() => {
-    const all = companies.map(c => c.industry).filter(Boolean);
-    return [...new Set(all)].sort();
+    return { total: companies.length, sectors: sectors.size, setCount, maiCount };
   }, [companies]);
 
   const uniqueSectors = useMemo(() => {
-    const pool = industryFilter === 'all' ? companies : companies.filter(c => c.industry === industryFilter);
-    const all = pool.map(c => c.sector).filter(Boolean);
-    return [...new Set(all)].sort();
-  }, [companies, industryFilter]);
+    const pool = marketFilter === 'all' ? companies : companies.filter(c => c.market === marketFilter);
+    return [...new Set(pool.map(c => c.sector).filter(Boolean))].sort();
+  }, [companies, marketFilter]);
 
   const filteredData = useMemo(() => {
     let data = companies;
     if (marketFilter !== 'all') data = data.filter(c => c.market === marketFilter);
-    if (industryFilter !== 'all') data = data.filter(c => c.industry === industryFilter);
     if (sectorFilter !== 'all') data = data.filter(c => c.sector === sectorFilter);
 
     if (searchQuery.trim()) {
@@ -104,7 +101,7 @@ export function DashboardPage() {
       return fuse.search(searchQuery).map(r => r.item);
     }
     return data;
-  }, [companies, marketFilter, industryFilter, sectorFilter, searchQuery]);
+  }, [companies, marketFilter, sectorFilter, searchQuery]);
 
   const columns = useMemo<ColumnDef<Company>[]>(() => [
     {
@@ -116,23 +113,20 @@ export function DashboardPage() {
           <Badge
             className={`font-mono text-xs font-bold px-1.5 py-0.5 ${v === 'SET' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-accent/20 text-accent border-accent/30'} border`}
             variant="outline"
-            data-testid="badge-market"
           >
             {v}
           </Badge>
         );
       },
-      size: 80,
-    },
-    {
-      accessorKey: 'industry',
-      header: 'Industry',
-      size: 140,
+      size: 75,
     },
     {
       accessorKey: 'sector',
       header: 'Sector',
-      size: 140,
+      cell: ({ getValue }) => (
+        <span className="font-mono text-xs text-muted-foreground">{getValue() as string}</span>
+      ),
+      size: 110,
     },
     {
       accessorKey: 'symbol',
@@ -144,24 +138,47 @@ export function DashboardPage() {
     },
     {
       accessorKey: 'symbol_name',
-      header: 'Name',
-      size: 200,
+      header: 'ชื่อบริษัท',
+      cell: ({ getValue }) => (
+        <span className="text-sm text-foreground">{getValue() as string}</span>
+      ),
+      size: 220,
     },
     {
       accessorKey: 'description',
-      header: 'Description',
+      header: 'ประกอบธุรกิจ',
       cell: ({ getValue }) => {
         const v = (getValue() as string) || '';
-        const truncated = v.length > 80 ? v.slice(0, 80) + '...' : v;
+        const truncated = v.length > 80 ? v.slice(0, 80) + '…' : v;
         return (
           <span className="text-muted-foreground text-sm" title={v}>{truncated || '—'}</span>
         );
       },
-      size: 300,
+      size: 320,
       enableSorting: false,
     },
     {
-      accessorKey: 'report_download_link',
+      accessorKey: 'link_website',
+      header: 'Website',
+      cell: ({ getValue }) => {
+        const url = getValue() as string;
+        return url ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-primary hover:text-primary/80 transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : <span className="text-muted-foreground">—</span>;
+      },
+      enableSorting: false,
+      size: 70,
+    },
+    {
+      accessorKey: 'one_report_link',
       header: 'Report',
       cell: ({ getValue }) => {
         const url = getValue() as string;
@@ -172,7 +189,6 @@ export function DashboardPage() {
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             className="text-primary hover:text-primary/80 transition-colors"
-            data-testid="link-report"
           >
             <ExternalLink className="h-4 w-4" />
           </a>
@@ -199,35 +215,33 @@ export function DashboardPage() {
   const exportCSV = useCallback(() => {
     const rows = filteredData.map(c => ({
       Market: c.market,
-      Industry: c.industry,
       Sector: c.sector,
       Symbol: c.symbol,
       'Symbol Name': c.symbol_name,
       Description: c.description,
-      'Company Website': c.company_website,
-      'Report Link': c.report_download_link,
+      Website: c.link_website,
+      'One Report': c.one_report_link,
+      'Last Updated': c.last_updated_at,
     }));
     const header = Object.keys(rows[0] || {}).join(',');
-    const csv = [header, ...rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = '\uFEFF' + [header, ...rows.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'set_companies.csv';
-    a.click();
+    a.href = url; a.download = 'set_companies.csv'; a.click();
     URL.revokeObjectURL(url);
   }, [filteredData]);
 
   const exportExcel = useCallback(() => {
     const rows = filteredData.map(c => ({
       Market: c.market,
-      Industry: c.industry,
       Sector: c.sector,
       Symbol: c.symbol,
       'Symbol Name': c.symbol_name,
       Description: c.description,
-      'Company Website': c.company_website,
-      'Report Link': c.report_download_link,
+      Website: c.link_website,
+      'One Report': c.one_report_link,
+      'Last Updated': c.last_updated_at,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -247,13 +261,11 @@ export function DashboardPage() {
     <Layout>
       <div className="space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Companies" value={stats.total} icon={Building2} />
-          <StatCard label="Industries" value={stats.industries} icon={Factory} />
           <StatCard label="Sectors" value={stats.sectors} icon={LayoutGrid} />
           <StatCard label="SET" value={stats.setCount} icon={TrendingUp} />
           <StatCard label="mai" value={stats.maiCount} icon={TrendingUp} accent />
-          <StatCard label="Last Sync" value={stats.lastSync} icon={Calendar} />
         </div>
 
         {/* Search & Filters */}
@@ -261,10 +273,10 @@ export function DashboardPage() {
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search symbols, names, sectors..."
+              placeholder="ค้นหา สัญลักษณ์ ชื่อบริษัท ประเภทธุรกิจ…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 font-mono text-sm bg-card border-border"
+              className="pl-9 text-sm bg-card border-border"
               data-testid="input-search"
             />
           </div>
@@ -277,16 +289,6 @@ export function DashboardPage() {
               <SelectItem value="all">All Markets</SelectItem>
               <SelectItem value="SET">SET</SelectItem>
               <SelectItem value="mai">mai</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={industryFilter} onValueChange={v => { setIndustryFilter(v); setSectorFilter('all'); }}>
-            <SelectTrigger className="w-44 bg-card border-border text-sm" data-testid="select-industry">
-              <SelectValue placeholder="Industry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Industries</SelectItem>
-              {uniqueIndustries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -307,10 +309,9 @@ export function DashboardPage() {
             <Button variant="outline" size="sm" onClick={exportExcel} className="gap-1.5 text-xs bg-card" data-testid="button-export-excel">
               <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
             </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs bg-card" data-testid="button-column-toggle">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs bg-card">
                   <Eye className="h-3.5 w-3.5" /> Columns
                 </Button>
               </DropdownMenuTrigger>
@@ -359,9 +360,7 @@ export function DashboardPage() {
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="border-b border-border/50">
                       {columns.map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                          <Skeleton className="h-4 w-full max-w-32" />
-                        </td>
+                        <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full max-w-32" /></td>
                       ))}
                     </tr>
                   ))
@@ -370,7 +369,11 @@ export function DashboardPage() {
                     <td colSpan={columns.length} className="text-center py-16 text-muted-foreground">
                       <Building2 className="h-8 w-8 mx-auto mb-3 opacity-30" />
                       <p className="font-mono text-sm">No companies found</p>
-                      <p className="text-xs mt-1">Try adjusting search or filters, or sync data in Admin.</p>
+                      <p className="text-xs mt-1">
+                        {companies.length === 0
+                          ? 'Import a CSV file from the Admin panel to get started.'
+                          : 'Try adjusting your search or filters.'}
+                      </p>
                     </td>
                   </tr>
                 ) : (
@@ -401,11 +404,8 @@ export function DashboardPage() {
                   ? `${table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}–${Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filteredData.length)} of ${filteredData.length}`
                   : '0 results'}
               </span>
-              <Select
-                value={String(table.getState().pagination.pageSize)}
-                onValueChange={v => table.setPageSize(Number(v))}
-              >
-                <SelectTrigger className="h-7 w-20 text-xs bg-card border-border" data-testid="select-page-size">
+              <Select value={String(table.getState().pagination.pageSize)} onValueChange={v => table.setPageSize(Number(v))}>
+                <SelectTrigger className="h-7 w-20 text-xs bg-card border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -414,8 +414,8 @@ export function DashboardPage() {
               </Select>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-card" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} data-testid="button-prev-page">Prev</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-card" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} data-testid="button-next-page">Next</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-card" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Prev</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs px-2 bg-card" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next</Button>
             </div>
           </div>
         </div>

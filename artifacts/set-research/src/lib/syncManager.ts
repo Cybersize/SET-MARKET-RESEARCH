@@ -14,7 +14,7 @@ export async function syncCompanies(
 
   try {
     onProgress({
-      phase: 'fetching', total: 0, current: 0,
+      phase: 'parsing', total: 0, current: 0,
       imported, updated, failed, errors,
       message: 'Loading company list...'
     });

@@ -1,21 +1,15 @@
 export interface Company {
   id: string;
   market: 'SET' | 'mai';
-  industry: string;
   sector: string;
   symbol: string;
   symbol_name: string;
   description: string;
-  report_download_link: string;
-  company_website: string;
-  updated_at: string;
+  link_website: string;
+  one_report_link: string;
+  last_updated_at: string;
   imported_at: string;
-  logo?: string;
-  isin_code?: string;
-  ipo_date?: string;
-  headquarters?: string;
-  market_cap?: string;
-  financial_as_of?: string;
+  updated_at: string;
 }
 
 export interface SyncLog {
@@ -27,10 +21,12 @@ export interface SyncLog {
   success: boolean;
   failed_symbols: string[];
   error_logs: string[];
+  source?: 'csv' | 'api';
+  filename?: string;
 }
 
 export interface SyncProgress {
-  phase: 'idle' | 'fetching' | 'saving' | 'done' | 'error';
+  phase: 'idle' | 'parsing' | 'saving' | 'done' | 'error';
   total: number;
   current: number;
   imported: number;
