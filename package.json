@@ -5,6 +5,7 @@
   "scripts": {
     "preinstall": "node -e \"const fs=require('fs');['package-lock.json','yarn.lock'].forEach(f=>{try{fs.rmSync(f)}catch(_){}})\"",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build:web": "pnpm --filter @workspace/set-research run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
