@@ -10,8 +10,9 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table';
-import Fuse from 'fuse.js';
 import { useCompanies } from '@/hooks/useCompanies';
+import { smartSearch, type SmartSearchField } from '@/lib/smartSearch';
+import { SET_COMPANY_SEARCH_SYNONYMS, SET_SEARCH_INTENTS, SET_SECTOR_TAGS } from '@/lib/searchDictionary';
 import { Company } from '@/types';
 import { Layout } from '@/components/Layout';
 import { CompanyModal } from '@/components/CompanyModal';
@@ -37,22 +38,13 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-// Fuse.js with Thai-friendly settings: ignoreLocation so it matches anywhere in
-// the string (critical for Thai since words aren't space-separated), and a
-// generous distance so a short query still matches long descriptions.
-const fuseOptions = {
-  keys: [
-    { name: 'symbol', weight: 3 },
-    { name: 'symbol_name', weight: 2 },
-    { name: 'sector', weight: 1.5 },
-    { name: 'description', weight: 0.8 },
-  ],
-  threshold: 0.4,
-  includeScore: true,
-  ignoreLocation: true,
-  distance: 2000,
-  minMatchCharLength: 1,
-};
+const companySearchFields = [
+  { key: 'symbol', weight: 7, allowPartial: false, allowTypo: true },
+  { key: 'symbol_name', weight: 4.5, minPartialLength: 3 },
+  { key: 'sector', weight: 3.5, allowPartial: false },
+  { key: 'description', weight: 1.2, minPartialLength: 4, allowTypo: false },
+  { key: 'market', weight: 1, allowPartial: false, allowPrefix: false },
+] satisfies SmartSearchField<Company>[];
 
 function StatCard({ label, value, icon: Icon, accent }: { label: string; value: string | number; icon: React.ElementType; accent?: boolean }) {
   return (
@@ -75,6 +67,7 @@ export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [marketFilter, setMarketFilter] = useState('all');
   const [sectorFilter, setSectorFilter] = useState('all');
+  const [sectorSearch, setSectorSearch] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -91,14 +84,28 @@ export function DashboardPage() {
     return [...new Set(pool.map(c => c.sector).filter(Boolean))].sort();
   }, [companies, marketFilter]);
 
+  const filteredSectors = useMemo(() => {
+    const query = sectorSearch.trim().toLowerCase();
+    if (!query) return uniqueSectors;
+    return uniqueSectors.filter(s => s.toLowerCase().includes(query));
+  }, [uniqueSectors, sectorSearch]);
+
   const filteredData = useMemo(() => {
     let data = companies;
     if (marketFilter !== 'all') data = data.filter(c => c.market === marketFilter);
     if (sectorFilter !== 'all') data = data.filter(c => c.sector === sectorFilter);
 
     if (searchQuery.trim()) {
-      const fuse = new Fuse(data, fuseOptions);
-      return fuse.search(searchQuery).map(r => r.item);
+      return smartSearch(data, searchQuery, {
+        fields: companySearchFields,
+        synonyms: SET_COMPANY_SEARCH_SYNONYMS,
+        getTags: company => SET_SECTOR_TAGS[company.sector?.toLocaleLowerCase()] ?? [],
+        intents: SET_SEARCH_INTENTS,
+        minScore: 1200,
+        diversityKey: company => company.sector,
+        diversityWindow: 80,
+        maxPerDiversityKey: 18,
+      });
     }
     return data;
   }, [companies, marketFilter, sectorFilter, searchQuery]);
@@ -281,7 +288,7 @@ export function DashboardPage() {
             />
           </div>
 
-          <Select value={marketFilter} onValueChange={v => { setMarketFilter(v); setSectorFilter('all'); }}>
+          <Select value={marketFilter} onValueChange={v => { setMarketFilter(v); setSectorFilter('all'); setSectorSearch(''); }}>
             <SelectTrigger className="w-32 bg-card border-border text-sm" data-testid="select-market">
               <SelectValue placeholder="Market" />
             </SelectTrigger>
@@ -296,9 +303,23 @@ export function DashboardPage() {
             <SelectTrigger className="w-44 bg-card border-border text-sm" data-testid="select-sector">
               <SelectValue placeholder="Sector" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent
+              header={
+                <div className="px-2 pt-2">
+                  <Input
+                    value={sectorSearch}
+                    onChange={e => setSectorSearch(e.target.value)}
+                    placeholder="Search sectors..."
+                    className="h-9 w-full text-sm"
+                    autoFocus
+                  />
+                </div>
+              }
+            >
               <SelectItem value="all">All Sectors</SelectItem>
-              {uniqueSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {filteredSectors.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
